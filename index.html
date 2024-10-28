@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Search Application</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            background-color: #91dfcb;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+        }
+        h1 {
+            color: rgb(0, 0, 0);
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+            color: rgb(0, 0, 0);
+        }
+        svg {
+            margin-top: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    
+    <h1>Search for a Word in Text Files</h1>
+    <form method="POST">
+        <input type="text" name="search_term" placeholder="Enter search term" required>
+        <br>
+        <label>
+            <input type="checkbox" name="case_sensitive"> Match Case
+        </label>
+        <br>
+        <label>
+            <input type="checkbox" name="whole_word"> Match Whole Word Only
+        </label>
+        <br>
+        <button type="submit">Search</button>
+    </form>
+
+    {% if results %}
+        <h2 style="color: rgb(0, 0, 0);">Search Results for "{{ search_term }}"</h2>
+        {% for result in results %}
+            <h3 style="color: rgb(0, 0, 0);">In file: {{ result.file }}</h3>
+            <ul>
+                {% for match in result.matches %}
+                    <li>{{ match[0] }} (Row: {{ match[1] }}, Column: {{ match[2] }})</li>
+                {% endfor %}
+            </ul>
+            <p style="color: rgb(0, 0, 0);">Brute Force Time: {{ result.brute_time }}s, KMP Time: {{ result.kmp_time }}s</p>
+        {% endfor %}
+
+        <!-- SVG Visualization -->
+        <svg width="820" height="400"></svg>
+
+        <script>
+            // D3.js visualization: plotting the number of matches per file
+            const data = [
+                {% for result in results %}
+                    { file: "{{ result.file }}", count: {{ result.matches | length }} },
+                {% endfor %}
+            ];
+
+            const svg = d3.select("svg");
+            const margin = { top: 20, right: 30, bottom: 40, left: 40 };
+            const width = +svg.attr("width") - margin.left - margin.right;
+            const height = +svg.attr("height") - margin.top - margin.bottom;
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.file))
+                .range([0, width])
+                .padding(0.1);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.count)])
+                .nice()
+                .range([height, 0]);
+
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            //X-Axis
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x));
+
+            // Y-Axis with Label
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y).ticks(10));
+
+            // Y-Axis Label
+            svg.append("text")
+                .attr("transform", `translate(${margin.left / 3}, ${height / 2}) rotate(-90)`)
+                .attr("text-anchor", "middle")
+                .attr("fill", "black")
+                .style("font-size", "14px")
+                .text("No. of Words");
+
+            g.selectAll(".bar")
+                .data(data)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d.file))
+                .attr("y", height)  // Start from the bottom for animation
+                .attr("width", x.bandwidth())
+                .attr("height", 0)  // Height is initially 0 for animation
+                .attr("fill", "#69b3a2")
+                .transition()  // Correctly apply the transition
+                .duration(800)  // Animation duration
+                .ease(d3.easeLinear)
+                .attr("y", d => y(d.count))
+                .attr("height", d => height - y(d.count));
+        </script>
+    {% endif %}
+</body>
+</html>
